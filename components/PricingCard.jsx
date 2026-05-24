@@ -1,92 +1,100 @@
-import { Check, Zap } from 'lucide-react';
+import { useState } from 'react';
 
-const plans = [
-  {
-    name: 'Free Preview',
-    price: '$0',
-    highlight: false,
-    features: [
-      '30-second AI preview',
-      'Unlimited generations',
-      'Share preview link',
-      'Basic mood analysis',
-    ],
-    cta: 'Try for free',
-    ctaAction: 'free',
-  },
-  {
-    name: 'Full Download',
-    price: '$1.99',
-    sub: 'per song',
-    highlight: true,
-    features: [
-      'Full-length song (2-3 min)',
-      'High quality 320kbps MP3',
-      'No watermark',
-      'Commercial use rights',
-      'AI album art included',
-      'Share link forever',
-    ],
-    cta: 'Get full song',
-    ctaAction: 'paid',
-    badge: 'Most popular',
-  },
-];
+export default function PricingCard({ songData }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-export default function PricingCard({ onSelect }) {
+  const handleBuy = async () => {
+    if (!songData?.songId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          songId: songData.songId,
+          songUrl: songData.songUrl,
+          title: songData.title,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment failed');
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-      {plans.map((plan) => (
-        <div
-          key={plan.name}
-          className={`relative rounded-2xl p-6 transition-all duration-300 ${
-            plan.highlight
-              ? 'glow-purple-sm'
-              : 'glass hover:bg-white/[0.05]'
-          }`}
-          style={plan.highlight ? {
-            background: 'linear-gradient(135deg, rgba(184,78,241,0.12), rgba(99,60,180,0.10))',
-            border: '1px solid rgba(184,78,241,0.30)',
-          } : {}}
-        >
-          {plan.badge && (
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold text-white"
-              style={{ background: 'linear-gradient(90deg, #b84ef1, #7c3aed)' }}>
-              {plan.badge}
-            </div>
-          )}
-          <div className="mb-4">
-            <h3 className="text-white/80 font-medium text-sm">{plan.name}</h3>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className={`text-3xl font-black ${plan.highlight ? 'gradient-text' : 'text-white'}`}>
-                {plan.price}
-              </span>
-              {plan.sub && <span className="text-white/40 text-sm">{plan.sub}</span>}
-            </div>
-          </div>
-
-          <ul className="space-y-2.5 mb-6">
-            {plan.features.map(f => (
-              <li key={f} className="flex items-start gap-2 text-sm">
-                <Check size={15} className={`mt-0.5 flex-shrink-0 ${plan.highlight ? 'text-brand-400' : 'text-white/40'}`} />
-                <span className={plan.highlight ? 'text-white/80' : 'text-white/55'}>{f}</span>
-              </li>
-            ))}
-          </ul>
-
-          <button
-            onClick={() => onSelect && onSelect(plan.ctaAction)}
-            className={`w-full py-3 rounded-xl text-sm font-bold transition-all hover:scale-[1.03] ${
-              plan.highlight
-                ? 'btn-primary'
-                : 'bg-white/[0.07] hover:bg-white/[0.12] text-white/70'
-            }`}
-          >
-            {plan.highlight && <Zap size={14} className="inline mr-1.5 -mt-0.5" />}
-            {plan.cta}
-          </button>
+    <div className="glass-bright rounded-2xl p-6 border border-brand/20">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="font-semibold">Full Song Download</div>
+          <div className="text-white/50 text-sm">MP3 &bull; 2-3 minutes &bull; Commercial use</div>
         </div>
-      ))}
+        <div className="text-2xl font-black gradient-text">$1.99</div>
+      </div>
+
+      <ul className="space-y-2 mb-5 text-sm text-white/60">
+        <li className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Full-length MP3 (not just 30 seconds)
+        </li>
+        <li className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Unique song — generated only for your photo
+        </li>
+        <li className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Commercial use rights included
+        </li>
+        <li className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Instant download via secure link
+        </li>
+      </ul>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleBuy}
+        disabled={loading}
+        className="btn-primary w-full py-4 text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {loading ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Redirecting to checkout...
+          </>
+        ) : (
+          <>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            Buy full song &mdash; $1.99
+          </>
+        )}
+      </button>
+
+      <p className="mt-3 text-center text-white/30 text-xs">
+        Secure payment via Stripe &bull; Instant delivery
+      </p>
     </div>
   );
 }
