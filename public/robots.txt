@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://photosound-git-main-druxio.vercel.app/sitemap.xml
