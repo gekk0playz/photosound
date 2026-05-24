@@ -1,109 +1,92 @@
-import { useRef, useState, useCallback } from 'react';
-import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
-export default function PhotoUpload({ onFileSelect, disabled }) {
+const ACCEPTED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_MB = 10;
+
+export default function PhotoUpload({ onFile }) {
   const inputRef = useRef(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [preview, setPreview] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleFile = useCallback((file) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (JPG, PNG, GIF, WebP)');
-      return;
+  const validate = (file) => {
+    if (!ACCEPTED.includes(file.type)) {
+      setError('Please upload a JPG, PNG, GIF, or WebP image.');
+      return false;
     }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    onFileSelect(file);
-  }, [onFileSelect]);
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setError(`File too large. Maximum size is ${MAX_MB}MB.`);
+      return false;
+    }
+    return true;
+  };
 
-  const handleDrop = useCallback((e) => {
+  const handleFile = (file) => {
+    if (!file) return;
+    setError('');
+    if (!validate(file)) return;
+    onFile(file);
+  };
+
+  const onInputChange = (e) => handleFile(e.target.files?.[0]);
+
+  const onDrop = (e) => {
     e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    handleFile(file);
-  }, [handleFile]);
+    setDragging(false);
+    handleFile(e.dataTransfer.files?.[0]);
+  };
 
-  const handleChange = useCallback((e) => {
-    handleFile(e.target.files[0]);
-  }, [handleFile]);
-
-  const clearPhoto = useCallback((e) => {
-    e.stopPropagation();
-    setPreview(null);
-    onFileSelect(null);
-    if (inputRef.current) inputRef.current.value = '';
-  }, [onFileSelect]);
+  const onDragOver = (e) => { e.preventDefault(); setDragging(true); };
+  const onDragLeave = () => setDragging(false);
 
   return (
-    <div
-      className={`relative rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden
-        ${dragOver
-          ? 'border-brand-400 bg-brand-500/10 scale-[1.01]'
-          : preview
-            ? 'border-brand-600/40 bg-transparent'
-            : 'border-white/15 bg-white/[0.02] hover:border-brand-500/50 hover:bg-brand-500/5'}
-        ${disabled ? 'opacity-50 pointer-events-none' : ''}
-      `}
-      style={{ minHeight: '280px' }}
-      onClick={() => !disabled && inputRef.current?.click()}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
-    >
+    <div>
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        className={`
+          glass rounded-2xl p-10 text-center cursor-pointer transition-all duration-200
+          border-2 border-dashed
+          ${dragging
+            ? 'border-brand bg-brand/10 scale-[1.01]'
+            : 'border-white/10 hover:border-brand/50 hover:bg-white/5'
+          }
+        `}
+      >
+        <div className="mb-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-brand/20 border border-brand/30 flex items-center justify-center">
+            <svg className="w-7 h-7 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        </div>
+
+        <p className="text-white font-semibold mb-1">
+          {dragging ? 'Drop your photo here' : 'Upload any photo'}
+        </p>
+        <p className="text-white/50 text-sm mb-3">
+          Drag and drop, or click to browse
+        </p>
+        <p className="text-white/30 text-xs">
+          JPG, PNG, GIF, WebP &bull; Max {MAX_MB}MB
+        </p>
+      </div>
+
+      {error && (
+        <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+          {error}
+        </div>
+      )}
+
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept={ACCEPTED.join(',')}
+        onChange={onInputChange}
         className="hidden"
-        onChange={handleChange}
-        disabled={disabled}
       />
-
-      {preview ? (
-        <>
-          <img
-            src={preview}
-            alt="Your photo"
-            className="w-full h-full object-cover"
-            style={{ maxHeight: '420px' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <button
-            onClick={clearPhoto}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center hover:bg-red-500/80 transition-colors"
-          >
-            <X size={14} />
-          </button>
-          <div className="absolute bottom-4 left-4 text-sm text-white/70 font-medium">
-            Click to change photo
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center h-full py-16 gap-5 select-none">
-          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300
-            ${dragOver ? 'bg-brand-500/30 scale-110' : 'bg-white/[0.06]'}`}>
-            {dragOver
-              ? <ImageIcon size={36} className="text-brand-400" />
-              : <Upload size={36} className="text-white/40" />}
-          </div>
-          <div className="text-center">
-            <p className="text-white/80 font-semibold text-lg">
-              {dragOver ? 'Drop it here' : 'Drop your photo here'}
-            </p>
-            <p className="text-white/40 text-sm mt-1">
-              or click to browse · JPG, PNG, GIF, WebP · max 10 MB
-            </p>
-          </div>
-          <div className="flex gap-2 flex-wrap justify-center mt-2">
-            {['🌅 Sunset', '🏙️ City', '🌲 Nature', '🐾 Pets', '💃 Portraits'].map(tag => (
-              <span key={tag} className="px-3 py-1 rounded-full bg-white/[0.05] text-white/40 text-xs">
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
