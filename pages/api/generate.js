@@ -19,40 +19,19 @@ function checkRateLimit(ip) {
 }
 
 function getDemoSong(prompt, title) {
-  // Different demo songs for variety
-  const demos = [
-    {
-      songId: 'demo_' + Date.now(),
-      title: title || 'Golden Hour',
-      songUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
-      audioPreviewUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
-      previewSeconds: 30,
-      coverUrl: null,
-      duration: 180,
-      demo: true,
-    },
-    {
-      songId: 'demo_' + Date.now(),
-      title: title || 'Midnight Dreams',
-      songUrl: 'https://cdn.pixabay.com/audio/2022/10/25/audio_f02ef8ce0b.mp3',
-      audioPreviewUrl: 'https://cdn.pixabay.com/audio/2022/10/25/audio_f02ef8ce0b.mp3',
-      previewSeconds: 30,
-      coverUrl: null,
-      duration: 150,
-      demo: true,
-    },
-    {
-      songId: 'demo_' + Date.now(),
-      title: title || 'Ocean Waves',
-      songUrl: 'https://cdn.pixabay.com/audio/2022/03/09/audio_c12c9bfe02.mp3',
-      audioPreviewUrl: 'https://cdn.pixabay.com/audio/2022/03/09/audio_c12c9bfe02.mp3',
-      previewSeconds: 30,
-      coverUrl: null,
-      duration: 200,
-      demo: true,
-    },
-  ];
-  return demos[Math.floor(Math.random() * demos.length)];
+  // Use self-hosted demo-audio endpoint — no external CDN dependency
+  const titles = ['Golden Hour', 'Midnight Dreams', 'Ocean Waves'];
+  const t = titles[Math.floor(Math.random() * titles.length)];
+  return {
+    songId: 'demo_' + Date.now(),
+    title: title || t,
+    songUrl: '/api/demo-audio',
+    audioPreviewUrl: '/api/demo-audio',
+    previewSeconds: 30,
+    coverUrl: null,
+    duration: 30,
+    demo: true,
+  };
 }
 
 export default async function handler(req, res) {
