@@ -1,307 +1,283 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useState, useRef } from 'react';
-import { Music, Zap, Share2, ChevronRight, Star, ImageIcon, Headphones } from 'lucide-react';
 import PhotoUpload from '../components/PhotoUpload';
+import SongPlayer from '../components/SongPlayer';
 import PricingCard from '../components/PricingCard';
-import { useRouter } from 'next/router';
 
 const STEPS = [
-  { icon: ImageIcon, label: 'Upload any photo', desc: 'Selfie, sunset, your dog â anything works' },
-  { icon: Zap, label: 'AI reads the vibe', desc: 'GPT-4 Vision extracts mood, colours, emotion' },
-  { icon: Music, label: 'Suno writes the song', desc: 'A full AI song generated just for your image' },
-  { icon: Share2, label: 'Share with everyone', desc: '"This is what my photo sounds like ðµ"' },
+  { n: '01', title: 'Upload any photo', desc: 'Selfie, landscape, pet, artwork — anything.' },
+  { n: '02', title: 'AI reads the vibe', desc: 'GPT-4 Vision analyses mood, colour, and emotion.' },
+  { n: '03', title: 'Song is composed', desc: 'Suno AI composes a unique track that matches the image.' },
+  { n: '04', title: 'Listen and download', desc: 'Preview free. Download the full MP3 for $1.99.' },
 ];
 
 const EXAMPLES = [
-  { emoji: 'ð', label: 'Golden hour sunset', genre: 'Dreamy ambient', colour: '#f97316' },
-  { emoji: 'ðï¸', label: 'NYC at night', genre: 'Lo-fi hip hop', colour: '#818cf8' },
-  { emoji: 'ð', label: 'Ocean waves', genre: 'Chill electronic', colour: '#38bdf8' },
-  { emoji: 'ð', label: 'Puppy portrait', genre: 'Playful indie pop', colour: '#4ade80' },
-  { emoji: 'ð²', label: 'Forest trail', genre: 'Folk acoustic', colour: '#84cc16' },
-  { emoji: 'ð', label: 'Dance night out', genre: 'Vibrant house', colour: '#f472b6' },
+  { label: 'Golden hour sunset', genre: 'Dreamy ambient' },
+  { label: 'NYC at night', genre: 'Lo-fi hip hop' },
+  { label: 'Ocean waves', genre: 'Chill electronic' },
+  { label: 'Puppy portrait', genre: 'Playful indie pop' },
+  { label: 'Forest trail', genre: 'Folk acoustic' },
+  { label: 'Dance night out', genre: 'Vibrant house' },
 ];
 
 export default function Home() {
-  const router = useRouter();
-  const appRef = useRef(null);
+  const [step, setStep] = useState('idle'); // idle | analyzing | generating | done
+  const [file, setFile] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [songData, setSongData] = useState(null);
+  const [error, setError] = useState('');
+  const widgetRef = useRef(null);
 
-  const scrollToApp = () => {
-    appRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToWidget = () => {
+    widgetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const handleFile = async (selectedFile) => {
+    setFile(selectedFile);
+    setError('');
+    setStep('analyzing');
+    scrollToWidget();
+
+    try {
+      // Analyze image
+      const fd = new FormData();
+      fd.append('image', selectedFile);
+      const analyzeRes = await fetch('/api/analyze', { method: 'POST', body: fd });
+      if (!analyzeRes.ok) {
+        const errData = await analyzeRes.json();
+        throw new Error(errData.error || 'Analysis failed');
+      }
+      const analysisData = await analyzeRes.json();
+      setAnalysis(analysisData);
+      setStep('generating');
+
+      // Generate song
+      const generateRes = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: analysisData.suno_prompt, tags: analysisData.tags, title: analysisData.title_suggestion }),
+      });
+      if (!generateRes.ok) {
+        const errData = await generateRes.json();
+        throw new Error(errData.error || 'Generation failed');
+      }
+      const song = await generateRes.json();
+      setSongData(song);
+      setStep('done');
+    } catch (err) {
+      setError(err.message);
+      setStep('idle');
+    }
+  };
+
+  const handleReset = () => {
+    setStep('idle');
+    setFile(null);
+    setAnalysis(null);
+    setSongData(null);
+    setError('');
   };
 
   return (
     <>
       <Head>
-        <title>PhotoSound â Turn any photo into a song</title>
-        <meta name="description" content="Upload any photo and get an AI-generated song that matches its vibe. Powered by Suno AI." />
-        <meta property="og:title" content="PhotoSound â Turn any photo into a song" />
-        <meta property="og:description" content="What does your favourite photo sound like?" />
+        <title>PhotoSound — Turn any photo into a song</title>
+        <meta name="description" content="Upload any photo. AI analyses its vibe and generates a unique original song that matches it. Free preview, $1.99 for the full download." />
+        <meta property="og:title" content="PhotoSound — Turn any photo into a song" />
+        <meta property="og:description" content="Every photo has a sound. Upload yours and hear it." />
+        <meta property="og:image" content="/og-image.png" />
+        <meta property="og:url" content="https://photosound-git-main-druxio.vercel.app" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="PhotoSound — Turn any photo into a song" />
+        <meta name="twitter:description" content="Upload any photo. AI generates a song that sounds like it." />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="min-h-screen" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184,78,241,0.15) 0%, transparent 60%), #0a0a0f' }}>
+      {/* Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/60 backdrop-blur-md border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold text-sm">PS</div>
+          <span className="font-semibold text-white">PhotoSound</span>
+        </div>
+        <button onClick={scrollToWidget} className="btn-primary text-sm px-4 py-2">
+          Try it free
+        </button>
+      </nav>
 
-        {/* Nav */}
-        <nav className="sticky top-0 z-50 glass border-b border-white/[0.06]">
-          <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #b84ef1, #7c3aed)' }}>
-                <Music size={16} className="text-white" />
-              </div>
-              <span className="font-black text-lg tracking-tight">PhotoSound</span>
-            </div>
-            <button onClick={scrollToApp} className="btn-primary text-sm py-2 px-5">
-              Try it free â
-            </button>
-          </div>
-        </nav>
+      <main className="min-h-screen bg-black text-white pt-16">
 
         {/* Hero */}
-        <section className="max-w-4xl mx-auto px-5 pt-20 pb-16 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-8 text-sm text-brand-300 font-medium border border-brand-500/20">
-            <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-            AI-powered Â· Instant generation
-          </div>
+        <section className="relative pt-24 pb-16 px-6 text-center overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184,78,241,0.25) 0%, transparent 70%)'}} />
+          <div className="relative z-10 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 text-xs text-white/60 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              AI-powered · Instant generation
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-black leading-tight mb-6">
+              What does your<br />
+              <span className="gradient-text">favourite photo</span><br />
+              sound like?
+            </h1>
+            <p className="text-lg text-white/60 mb-8 max-w-xl mx-auto">
+              Upload any image. AI analyses its vibe, mood, and emotion
+              then generates a full original song that matches it. Every photo has a sound.
+            </p>
+            <button onClick={scrollToWidget} className="btn-primary text-lg px-8 py-4 inline-flex items-center gap-2">
+              Turn your photo into a song
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+            <p className="mt-3 text-sm text-white/40">Free preview · $1.99 for full download</p>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] tracking-tight mb-6">
-            What does your
-            <br />
-            <span className="gradient-text">favourite photo</span>
-            <br />
-            sound like?
-          </h1>
-
-          <p className="text-xl text-white/55 max-w-xl mx-auto leading-relaxed mb-10">
-            Upload any image. AI analyses its vibe, mood, and emotion â then generates a
-            full original song that matches it. Every photo has a sound.
-          </p>
-
-          <button onClick={scrollToApp} className="btn-primary text-base px-8 py-4 inline-flex items-center gap-2 rounded-2xl">
-            Turn your photo into a song
-            <ChevronRight size={18} />
-          </button>
-
-          <p className="mt-4 text-white/30 text-sm">Free preview Â· $1.99 for full download</p>
-
-          {/* Floating example genres */}
-          <div className="flex flex-wrap justify-center gap-3 mt-12">
-            {EXAMPLES.map(ex => (
-              <div key={ex.label} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition-transform cursor-default">
-                <span className="text-lg">{ex.emoji}</span>
-                <div className="text-left">
-                  <p className="text-white/70 text-xs font-semibold leading-tight">{ex.label}</p>
-                  <p className="text-xs font-medium" style={{ color: ex.colour }}>{ex.genre}</p>
+            {/* Example tags */}
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
+              {EXAMPLES.map(e => (
+                <div key={e.label} className="glass flex items-center gap-2 px-3 py-2 rounded-full text-sm">
+                  <div className="flex gap-0.5">
+                    {[1,2,3,4].map(i => <div key={i} className="waveform-bar w-1 rounded-full bg-brand/60" style={{height: (8 + i*4) + 'px', animationDelay: i*0.1 + 's'}} />)}
+                  </div>
+                  <span className="text-white/80">{e.label}</span>
+                  <span className="text-brand/80 text-xs">{e.genre}</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
         {/* How it works */}
-        <section className="max-w-5xl mx-auto px-5 py-16">
-          <h2 className="text-3xl font-black text-center mb-12">How it works</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {STEPS.map((step, i) => (
-              <div key={step.label} className="glass rounded-2xl p-5 text-center hover:bg-white/[0.05] transition-all group">
-                <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center relative"
-                  style={{ background: `rgba(184,78,241,${0.1 + i * 0.05})`, border: '1px solid rgba(184,78,241,0.2)' }}>
-                  <step.icon size={22} className="text-brand-400 group-hover:scale-110 transition-transform" />
-                  <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center text-[10px] font-bold text-white">
-                    {i + 1}
-                  </div>
+        <section className="py-16 px-6 border-t border-white/5">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-center mb-10">How it works</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {STEPS.map(s => (
+                <div key={s.n} className="glass rounded-2xl p-5">
+                  <div className="text-3xl font-black text-brand/30 mb-3">{s.n}</div>
+                  <div className="font-semibold mb-1">{s.title}</div>
+                  <div className="text-sm text-white/50">{s.desc}</div>
                 </div>
-                <p className="text-white/80 font-semibold text-sm mb-1">{step.label}</p>
-                <p className="text-white/40 text-xs leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Upload section */}
-        <section ref={appRef} className="max-w-2xl mx-auto px-5 py-16">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-black mb-3">Try it now</h2>
-            <p className="text-white/50">Drop any photo and hear your song in ~60 seconds</p>
+        {/* Generate widget */}
+        <section ref={widgetRef} className="py-16 px-6" id="generate">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold text-center mb-2">Try it now</h2>
+            <p className="text-center text-white/50 text-sm mb-8">Upload any photo and hear what it sounds like</p>
+
+            {error && (
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+                {error}
+              </div>
+            )}
+
+            {step === 'idle' && (
+              <PhotoUpload onFile={handleFile} />
+            )}
+
+            {step === 'analyzing' && (
+              <div className="glass rounded-2xl p-10 text-center">
+                <div className="w-12 h-12 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-white/70 font-medium">Analysing your photo...</p>
+                <p className="text-white/40 text-sm mt-1">GPT-4 Vision is reading the mood and emotion</p>
+              </div>
+            )}
+
+            {step === 'generating' && analysis && (
+              <div className="glass rounded-2xl p-10 text-center">
+                <div className="w-12 h-12 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-white/70 font-medium">Composing your song...</p>
+                <p className="text-white/40 text-sm mt-1 mb-4">Suno AI is generating a {analysis.genre} track</p>
+                {analysis && (
+                  <div className="glass-bright rounded-xl p-4 text-left text-sm">
+                    <div className="text-white/40 text-xs mb-2 uppercase tracking-wider">AI detected</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><span className="text-white/40">Mood:</span> <span className="text-white/80">{analysis.mood}</span></div>
+                      <div><span className="text-white/40">Genre:</span> <span className="text-white/80">{analysis.genre}</span></div>
+                      <div><span className="text-white/40">Tempo:</span> <span className="text-white/80">{analysis.tempo}</span></div>
+                      <div><span className="text-white/40">Instruments:</span> <span className="text-white/80">{analysis.instruments?.slice(0,2).join(', ')}</span></div>
+                    </div>
+                  </div>
+                )}
+                <p className="text-white/30 text-xs mt-4">This takes 1-3 minutes...</p>
+              </div>
+            )}
+
+            {step === 'done' && songData && (
+              <div className="space-y-4">
+                <SongPlayer songData={songData} analysis={analysis} />
+                <PricingCard songData={songData} />
+                <button onClick={handleReset} className="w-full py-2 text-sm text-white/40 hover:text-white/60 transition-colors">
+                  Try another photo
+                </button>
+              </div>
+            )}
           </div>
-          <div className="glass-bright rounded-3xl p-6 glow-purple">
-            <GenerateWidget />
+        </section>
+
+        {/* Social proof */}
+        <section className="py-16 px-6 border-t border-white/5">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-2xl font-bold mb-3">What will your photo sound like?</h2>
+            <p className="text-white/50 mb-10">Every image tells a story. Now it tells a song.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {[
+                { stat: '87%', label: 'Gross margin per song' },
+                { stat: '~2 min', label: 'Average generation time' },
+                { stat: '$1.99', label: 'Flat price, no subscription' },
+              ].map(s => (
+                <div key={s.stat} className="glass rounded-2xl p-6">
+                  <div className="text-3xl font-black gradient-text mb-1">{s.stat}</div>
+                  <div className="text-white/50 text-sm">{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* Pricing */}
-        <section className="max-w-4xl mx-auto px-5 py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-black mb-3">Simple pricing</h2>
-            <p className="text-white/50">Start free. Pay only for what you love.</p>
-          </div>
-          <PricingCard onSelect={(tier) => {
-            if (tier === 'free') appRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }} />
-        </section>
-
-        {/* Social proof placeholder */}
-        <section className="max-w-4xl mx-auto px-5 py-12 text-center">
-          <div className="flex justify-center gap-1 mb-3">
-            {[...Array(5)].map((_, i) => <Star key={i} size={18} className="fill-brand-400 text-brand-400" />)}
-          </div>
-          <p className="text-white/60 max-w-md mx-auto italic text-lg leading-relaxed">
-            "Uploaded my sunset photo â got the most vibe-accurate lo-fi track. Sent it to all my friends instantly."
-          </p>
-          <p className="text-white/30 text-sm mt-3 font-medium">â Early tester</p>
-        </section>
-
-        {/* Footer */}
-        <footer className="border-t border-white/[0.06] py-10">
-          <div className="max-w-5xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Music size={16} className="text-brand-500" />
-              <span className="text-white/40 text-sm font-semibold">PhotoSound</span>
-            </div>
-            <p className="text-white/25 text-xs">Â© 2026 PhotoSound. Built with Suno AI & OpenAI.</p>
-            <div className="flex gap-5 text-white/35 text-xs">
-              <a href="#" className="hover:text-white/60 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white/60 transition-colors">Terms</a>
-              <a href="mailto:hello@photosound.app" className="hover:text-white/60 transition-colors">Contact</a>
+        <section className="py-16 px-6 border-t border-white/5">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold text-center mb-2">Simple pricing</h2>
+            <p className="text-center text-white/50 text-sm mb-10">No subscription. Pay only for what you love.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="glass rounded-2xl p-6">
+                <div className="text-lg font-bold mb-1">Free Preview</div>
+                <div className="text-3xl font-black mb-4">$0</div>
+                <ul className="space-y-2 text-sm text-white/60">
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> Unlimited uploads</li>
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> AI photo analysis</li>
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> 30-second song preview</li>
+                  <li className="flex gap-2"><span className="text-white/30">✗</span> Full song download</li>
+                </ul>
+              </div>
+              <div className="glass-bright rounded-2xl p-6 border border-brand/30 relative">
+                <div className="absolute top-4 right-4 bg-brand text-white text-xs px-2 py-0.5 rounded-full">Popular</div>
+                <div className="text-lg font-bold mb-1">Full Download</div>
+                <div className="text-3xl font-black mb-4">$1.99</div>
+                <ul className="space-y-2 text-sm text-white/60">
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> Full-length MP3 (2-3 min)</li>
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> Commercial use rights</li>
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> Instant download</li>
+                  <li className="flex gap-2"><span className="text-green-400">✓</span> Unique — never repeated</li>
+                </ul>
+                <button onClick={scrollToWidget} className="btn-primary w-full mt-6 py-3 text-sm">
+                  Create your song
+                </button>
+              </div>
             </div>
           </div>
-        </footer>
-      </div>
+        </section>
+
+      </main>
+
+      {/* Footer */}
+      <footer className="py-8 px-6 border-t border-white/5 text-center text-white/30 text-sm">
+        <p>PhotoSound &mdash; Every photo has a sound.</p>
+        <p className="mt-1">Powered by GPT-4 Vision + Suno AI</p>
+      </footer>
     </>
-  );
-}
-
-// Inline mini generator widget for landing page
-function GenerateWidget() {
-  const [file, setFile] = useState(null);
-  const [status, setStatus] = useState('idle'); // idle | analyzing | generating | done | error
-  const [result, setResult] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const generate = async () => {
-    if (!file) return;
-    setStatus('analyzing');
-    setErrorMsg('');
-
-    try {
-      // Step 1: Analyze image
-      const fd = new FormData();
-      fd.append('image', file);
-      const analyzeRes = await fetch('/api/analyze', { method: 'POST', body: fd });
-      if (!analyzeRes.ok) throw new Error((await analyzeRes.json()).error);
-      const analysisData = await analyzeRes.json();
-      setAnalysis(analysisData);
-
-      // Step 2: Generate song
-      setStatus('generating');
-      const genRes = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sunoPrompt: analysisData.suno_prompt,
-          title: analysisData.title_suggestion,
-          tier: 'free',
-        }),
-      });
-      if (!genRes.ok) throw new Error((await genRes.json()).error);
-      const genData = await genRes.json();
-      setResult(genData);
-      setStatus('done');
-    } catch (err) {
-      setErrorMsg(err.message || 'Something went wrong');
-      setStatus('error');
-    }
-  };
-
-  const buy = async () => {
-    if (!result?.songId) return;
-    const res = await fetch('/api/payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ songId: result.songId }),
-    });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-  };
-
-  if (status === 'done' && result) {
-    const { default: SongPlayer } = require('../components/SongPlayer');
-    return (
-      <div className="space-y-4">
-        {analysis && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            <span className="px-3 py-1 rounded-full bg-brand-500/15 border border-brand-500/20 text-brand-300 text-xs font-medium">
-              {analysis.genre}
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/[0.05] text-white/50 text-xs">
-              {analysis.mood}
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/[0.05] text-white/50 text-xs">
-              {analysis.tempo} tempo
-            </span>
-          </div>
-        )}
-        <SongPlayer
-          audioUrl={result.audioPreviewUrl}
-          previewSeconds={result.previewSeconds}
-          title={result.title}
-          coverUrl={result.coverUrl}
-          songId={result.songId}
-          tier="free"
-          onBuyClick={buy}
-        />
-        <button
-          onClick={() => { setStatus('idle'); setResult(null); setFile(null); setAnalysis(null); }}
-          className="w-full py-2.5 rounded-xl text-sm text-white/50 hover:text-white/70 hover:bg-white/[0.04] transition-all"
-        >
-          â Try another photo
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <PhotoUpload onFileSelect={setFile} disabled={status === 'analyzing' || status === 'generating'} />
-
-      {status === 'analyzing' && (
-        <StatusBanner icon="ð" label="Analysing your photoâ¦" sub="GPT-4 Vision is reading the vibe" />
-      )}
-      {status === 'generating' && (
-        <StatusBanner icon="ðµ" label="Composing your songâ¦" sub="Suno AI is generating â takes ~45s" spinner />
-      )}
-      {status === 'error' && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          â ï¸ {errorMsg}
-        </div>
-      )}
-
-      <button
-        onClick={generate}
-        disabled={!file || status === 'analyzing' || status === 'generating'}
-        className="btn-primary w-full py-4 text-base rounded-xl flex items-center justify-center gap-2"
-      >
-        {status === 'analyzing' || status === 'generating'
-          ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Working on it...</>
-          : <><Music size={18} /> Turn this photo into a song</>}
-      </button>
-    </div>
-  );
-}
-
-function StatusBanner({ icon, label, sub, spinner }) {
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-xl glass">
-      <div className="text-2xl">{icon}</div>
-      <div className="flex-1">
-        <p className="text-white/80 font-medium text-sm">{label}</p>
-        <p className="text-white/40 text-xs">{sub}</p>
-      </div>
-      {spinner && (
-        <div className="w-5 h-5 border-2 border-brand-500/30 border-t-brand-400 rounded-full animate-spin" />
-      )}
-    </div>
   );
 }
