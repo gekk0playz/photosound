@@ -15,11 +15,7 @@
     "stripe": "^14.21.0",
     "openai": "^4.47.1",
     "axios": "^1.7.2",
-    "formidable": "^3.5.1",
-    "sharp": "^0.33.4",
-    "framer-motion": "^11.2.10",
-    "lucide-react": "^0.383.0",
-    "clsx": "^2.1.1"
+    "formidable": "^3.5.1"
   },
   "devDependencies": {
     "autoprefixer": "^10.0.1",

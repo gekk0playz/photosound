@@ -1,13 +1,22 @@
 import Stripe from 'stripe';
 
+export const API_VERSION = '2024-06-20';
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const { sessionId, songId } = req.body;
-  if (!sessionId || !songId) return res.status(400).json({ error: 'Missing sessionId or songId' });
+  if (!sessionId || !songId) {
+    return res.status(400).json({ error: 'Missing sessionId or songId' });
+  }
 
-  // Demo mode: auto-verify demo sessions
-  if (sessionId.startsWith('demo_session_') || !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'PLACEHOLDER_NEEDS_REAL_KEY') {
+  const isDemo = sessionId.startsWith('demo_session_') ||
+    !process.env.STRIPE_SECRET_KEY ||
+    process.env.STRIPE_SECRET_KEY === 'PLACEHOLDER_NEEDS_REAL_KEY';
+
+  if (isDemo) {
     return res.status(200).json({
       verified: true,
       downloadUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
@@ -17,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: API_VERSION });
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== 'paid') {
@@ -26,20 +35,33 @@ export default async function handler(req, res) {
 
     const paidSongId = session.metadata?.songId;
     if (paidSongId && paidSongId !== songId) {
-      return res.status(403).json({ verified: false, error: 'Song ID mismatch' });
+      return res.status(403).json({ verified: false, error: 'Song ID mismatch — this song was not purchased' });
     }
 
-    // For real implementation: fetch the full audio URL from Suno
-    // For now return the songUrl stored in metadata
-    const downloadUrl = session.metadata?.songUrl || '';
+    const rawUrl = session.metadata?.songUrl || '';
+    const title = session.metadata?.title || 'Your Song';
+
+    // Serve downloads through the proxy so Suno CDN expiry doesn't break links
+    const downloadUrl = rawUrl
+      ? `/api/download?url=${encodeURIComponent(rawUrl)}&title=${encodeURIComponent(title)}`
+      : '';
 
     return res.status(200).json({
       verified: true,
       downloadUrl,
-      title: session.metadata?.title || 'Your Song',
+      title,
+      sessionId: session.id,
     });
   } catch (err) {
     console.error('Verify payment error:', err);
+
+    if (err.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({ verified: false, error: 'Invalid session ID' });
+    }
+    if (err.type === 'StripeAuthenticationError') {
+      return res.status(500).json({ verified: false, error: 'Payment system misconfigured' });
+    }
+
     return res.status(500).json({ verified: false, error: err.message || 'Verification failed' });
   }
 }

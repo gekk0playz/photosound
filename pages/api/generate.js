@@ -1,44 +1,82 @@
 import axios from 'axios';
 
-// Rate limiter: 5 generate requests per IP per 5 minutes (expensive endpoint)
+export const API_VERSION = '2024-06-20';
+
+// In-memory rate limit: 5 requests/IP/5 minutes
 const rateLimitMap = new Map();
 function checkRateLimit(ip) {
   const now = Date.now();
   const windowMs = 5 * 60 * 1000;
   const maxRequests = 5;
   const entry = rateLimitMap.get(ip) || { count: 0, reset: now + windowMs };
-  if (now > entry.reset) { entry.count = 0; entry.reset = now + windowMs; }
+  if (now > entry.reset) {
+    entry.count = 0;
+    entry.reset = now + windowMs;
+  }
   entry.count++;
   rateLimitMap.set(ip, entry);
   return entry.count <= maxRequests;
 }
 
-// Demo mode: returns a real publicly accessible sample track
 function getDemoSong(prompt, title) {
-  return {
-    songId: 'demo_' + Date.now(),
-    title: title || 'Golden Hour',
-    songUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
-    audioPreviewUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
-    previewSeconds: 30,
-    coverUrl: null,
-    duration: 180,
-    demo: true,
-  };
+  // Different demo songs for variety
+  const demos = [
+    {
+      songId: 'demo_' + Date.now(),
+      title: title || 'Golden Hour',
+      songUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
+      audioPreviewUrl: 'https://cdn.pixabay.com/audio/2024/03/11/audio_24e4afa7ba.mp3',
+      previewSeconds: 30,
+      coverUrl: null,
+      duration: 180,
+      demo: true,
+    },
+    {
+      songId: 'demo_' + Date.now(),
+      title: title || 'Midnight Dreams',
+      songUrl: 'https://cdn.pixabay.com/audio/2022/10/25/audio_f02ef8ce0b.mp3',
+      audioPreviewUrl: 'https://cdn.pixabay.com/audio/2022/10/25/audio_f02ef8ce0b.mp3',
+      previewSeconds: 30,
+      coverUrl: null,
+      duration: 150,
+      demo: true,
+    },
+    {
+      songId: 'demo_' + Date.now(),
+      title: title || 'Ocean Waves',
+      songUrl: 'https://cdn.pixabay.com/audio/2022/03/09/audio_c12c9bfe02.mp3',
+      audioPreviewUrl: 'https://cdn.pixabay.com/audio/2022/03/09/audio_c12c9bfe02.mp3',
+      previewSeconds: 30,
+      coverUrl: null,
+      duration: 200,
+      demo: true,
+    },
+  ];
+  return demos[Math.floor(Math.random() * demos.length)];
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) return res.status(429).json({ error: 'Too many generation requests. Please wait 5 minutes.' });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({
+      error: 'Too many generation requests. Please wait 5 minutes.',
+      retryAfter: 300,
+    });
+  }
 
   const { prompt, tags, title } = req.body;
-  if (!prompt) return res.status(400).json({ error: 'No prompt provided' });
+  if (!prompt) {
+    return res.status(400).json({ error: 'No prompt provided' });
+  }
 
-  // Demo mode fallback
-  if (!process.env.SUNO_API_KEY || process.env.SUNO_API_KEY === 'PLACEHOLDER_NEEDS_REAL_KEY') {
-    await new Promise(r => setTimeout(r, 3000)); // Simulate generation delay
+  const isDemo = !process.env.SUNO_API_KEY || process.env.SUNO_API_KEY === 'PLACEHOLDER_NEEDS_REAL_KEY';
+  if (isDemo) {
+    // Randomize delay between 2-4s to simulate real generation
+    await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
     return res.status(200).json(getDemoSong(prompt, title));
   }
 
@@ -51,10 +89,10 @@ export default async function handler(req, res) {
 
     // Submit generation request
     const genRes = await axios.post(`${sunoBase}/api/generate`, {
-      prompt: prompt,
-      tags: tags || '',
-      title: title || 'PhotoSound',
-      make_instrumental: true,
+      prompt: prompt.substring(0, 500),
+      tags: (tags || '').substring(0, 100),
+      title: (title || 'PhotoSound').substring(0, 100),
+      make_instrumental: false,
       model: 'chirp-v3-5',
     }, { headers, timeout: 30000 });
 
@@ -65,11 +103,13 @@ export default async function handler(req, res) {
 
     const jobId = data.id || data[0]?.id;
 
-    // Poll for completion
+    // Poll for completion (max 3 minutes)
     const maxRetries = 36;
     const pollInterval = 5000;
+
     for (let i = 0; i < maxRetries; i++) {
       await new Promise(r => setTimeout(r, pollInterval));
+
       try {
         const statusRes = await axios.get(`${sunoBase}/api/get?ids=${jobId}`, { headers, timeout: 15000 });
         const songs = statusRes.data;
@@ -81,7 +121,7 @@ export default async function handler(req, res) {
             title: song.title || title || 'PhotoSound',
             songUrl: song.audio_url,
             audioPreviewUrl: song.audio_url,
-            previewSeconds: 30,
+            previewSeconds: parseInt(process.env.NEXT_PUBLIC_FREE_PREVIEW_SECONDS || '30', 10),
             coverUrl: song.image_url || null,
             duration: song.duration || 180,
           });
@@ -92,13 +132,25 @@ export default async function handler(req, res) {
         }
       } catch (pollErr) {
         if (i === maxRetries - 1) throw pollErr;
-        // Continue polling on network errors
+        // Continue polling on transient network errors
       }
     }
 
-    throw new Error('Song generation timed out after 3 minutes');
+    throw new Error('Song generation timed out after 3 minutes — please try again');
+
   } catch (err) {
     console.error('Generate error:', err);
-    return res.status(500).json({ error: err.message || 'Song generation failed' });
+
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+      return res.status(503).json({ error: 'Suno AI is temporarily unavailable — please try again in a moment' });
+    }
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      return res.status(500).json({ error: 'Suno AI API key is invalid or missing' });
+    }
+    if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+      return res.status(504).json({ error: 'Suno AI request timed out — please try again' });
+    }
+
+    return res.status(500).json({ error: err.message || 'Song generation failed — please try again' });
   }
 }
