@@ -1,88 +1,115 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { CheckCircle, Download, Music, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
 
 export default function Success() {
   const router = useRouter();
   const { session_id, song_id } = router.query;
-  const [status, setStatus] = useState('verifying');
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [error, setError] = useState('');
+  const [state, setState] = useState('loading'); // loading | verified | error
+  const [downloadUrl, setDownloadUrl] = useState('');
+  const [songTitle, setSongTitle] = useState('Your Song');
 
   useEffect(() => {
     if (!session_id || !song_id) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/verify-payment?session_id=${session_id}&song_id=${song_id}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        setAudioUrl(data.audioUrl);
-        setStatus('ready');
-      } catch (err) {
-        setError(err.message);
-        setStatus('error');
-      }
-    })();
+    fetch('/api/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session_id, songId: song_id }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.verified && d.downloadUrl) {
+          setDownloadUrl(d.downloadUrl);
+          setSongTitle(d.title || 'Your Song');
+          setState('verified');
+        } else {
+          setState('error');
+        }
+      })
+      .catch(() => setState('error'));
   }, [session_id, song_id]);
 
   return (
     <>
       <Head>
-        <title>Your song is ready — PhotoSound</title>
+        <title>Download ready — PhotoSound</title>
+        <meta name="robots" content="noindex" />
       </Head>
-      <div className="min-h-screen flex items-center justify-center p-5"
-        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(74,222,128,0.08) 0%, transparent 60%), #0a0a0f' }}>
-        <div className="w-full max-w-md glass-bright rounded-3xl p-8 text-center">
-          {status === 'verifying' && (
-            <div className="space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-brand-500/15 flex items-center justify-center">
-                <span className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-400 rounded-full animate-spin block" />
-              </div>
-              <p className="text-white/60">Verifying your payment…</p>
-            </div>
+
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="max-w-md w-full glass rounded-3xl p-8 text-center">
+
+          {/* Nav back */}
+          <div className="mb-8">
+            <a href="/" className="text-white/40 text-sm hover:text-white/60 transition-colors flex items-center gap-1 justify-center">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to PhotoSound
+            </a>
+          </div>
+
+          {state === 'loading' && (
+            <>
+              <div className="w-14 h-14 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+              <h1 className="text-xl font-bold mb-2">Verifying payment...</h1>
+              <p className="text-white/50 text-sm">Preparing your download</p>
+            </>
           )}
 
-          {status === 'ready' && (
-            <div className="space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-2xl bg-emerald-500/15 flex items-center justify-center">
-                <CheckCircle size={36} className="text-emerald-400" />
+          {state === 'verified' && (
+            <>
+              <div className="w-14 h-14 bg-green-500/20 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-7 h-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <div>
-                <h1 className="text-2xl font-black text-white mb-2">Your song is ready!</h1>
-                <p className="text-white/50 text-sm">High quality MP3 · Commercial rights included</p>
-              </div>
+              <h1 className="text-2xl font-bold mb-2">Payment confirmed!</h1>
+              <p className="text-white/60 mb-2">{songTitle}</p>
+              <p className="text-white/40 text-sm mb-8">Your full song is ready to download</p>
+
               <a
-                href={audioUrl}
-                download="photosound.mp3"
-                className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-base font-bold text-white transition-all hover:scale-[1.02]"
-                style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary w-full py-4 text-base inline-flex items-center justify-center gap-2"
               >
-                <Download size={20} />
-                Download Full Song
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download MP3
               </a>
-              <Link href="/" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm text-white/50 hover:text-white/70 hover:bg-white/[0.04] transition-all">
-                <ArrowLeft size={14} />
-                Generate another
-              </Link>
-            </div>
+
+              <p className="mt-4 text-white/30 text-xs">
+                Link expires in 24 hours. Save it now.
+              </p>
+
+              <div className="mt-8 pt-8 border-t border-white/10">
+                <p className="text-white/40 text-sm mb-4">Create another song?</p>
+                <a href="/" className="text-brand hover:text-brand/80 text-sm font-medium transition-colors">
+                  Upload a new photo
+                </a>
+              </div>
+            </>
           )}
 
-          {status === 'error' && (
-            <div className="space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-red-500/15 flex items-center justify-center">
-                <span className="text-3xl">⚠️</span>
+          {state === 'error' && (
+            <>
+              <div className="w-14 h-14 bg-red-500/20 border border-red-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
-              <p className="text-white/70 font-semibold">Something went wrong</p>
-              <p className="text-red-400 text-sm">{error}</p>
-              <p className="text-white/40 text-xs">
-                If you were charged, email <a href="mailto:hello@photosound.app" className="text-brand-400">hello@photosound.app</a> with your receipt and we'll sort it out.
+              <h1 className="text-xl font-bold mb-2">Could not verify payment</h1>
+              <p className="text-white/50 text-sm mb-8">
+                If you were charged, please contact support with your session ID:
+                <br />
+                <code className="mt-2 block text-xs text-white/30 break-all">{session_id}</code>
               </p>
-              <Link href="/" className="block w-full py-3 rounded-xl text-sm text-white/50 hover:text-white/70 hover:bg-white/[0.04] transition-all text-center">
-                ← Back home
-              </Link>
-            </div>
+              <a href="/" className="btn-primary w-full py-3 inline-block">
+                Back to home
+              </a>
+            </>
           )}
         </div>
       </div>
