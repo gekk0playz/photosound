@@ -380,9 +380,8 @@ export default function Home() {
               What will your photo sound like?
             </h2>
             <p className="text-white/50 mb-8 sm:mb-10">Every image tells a story. Now it tells a song.</p>
-            <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {[
-                { stat: '87%', label: 'Gross margin per song' },
                 { stat: '~2 min', label: 'Average generation time' },
                 { stat: '$1.99', label: 'Flat price, no subscription' },
               ].map(s => (
