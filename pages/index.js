@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 const STEPS = [
-  { n: '01', title: 'Upload any photo', desc: 'Selfie, landscape, pet, artwork — anything.' },
+  { n: '01', title: 'Upload any photo', desc: 'Selfie, landscape, pet, artwork â anything.' },
   { n: '02', title: 'AI reads the vibe', desc: 'GPT-4 Vision analyses mood, colour, and emotion.' },
   { n: '03', title: 'Song is composed', desc: 'Suno AI composes a unique track that matches the image.' },
   { n: '04', title: 'Listen and download', desc: 'Preview free. Download the full MP3 for $1.99.' },
@@ -30,9 +30,12 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [playingId, setPlayingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [mainPlaying, setMainPlaying] = useState(false);
+  const [mainTime, setMainTime] = useState(0);
   const widgetRef = useRef(null);
   const fileInputRef = useRef(null);
   const audioRefs = useRef({});
+  const mainAudioRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -124,6 +127,12 @@ export default function Home() {
   };
 
   const handleReset = () => {
+    if (mainAudioRef.current) {
+      mainAudioRef.current.pause();
+      mainAudioRef.current = null;
+      setMainPlaying(false);
+      setMainTime(0);
+    }
     setStep('idle');
     setFile(null);
     setAnalysis(null);
@@ -131,8 +140,36 @@ export default function Home() {
     setError('');
   };
 
+  const handleMainPlay = () => {
+    if (!songData?.audioPreviewUrl) return;
+    if (mainAudioRef.current && mainPlaying) {
+      mainAudioRef.current.pause();
+      setMainPlaying(false);
+      return;
+    }
+    if (!mainAudioRef.current) {
+      const audio = new Audio(songData.audioPreviewUrl);
+      const previewSec = songData.previewSeconds || 30;
+      audio.addEventListener('timeupdate', () => {
+        setMainTime(Math.floor(audio.currentTime));
+        if (audio.currentTime >= previewSec) {
+          audio.pause();
+          audio.currentTime = 0;
+          setMainPlaying(false);
+          setMainTime(0);
+        }
+      });
+      audio.addEventListener('ended', () => { setMainPlaying(false); setMainTime(0); });
+      mainAudioRef.current = audio;
+    }
+    mainAudioRef.current.play().then(() => setMainPlaying(true)).catch(() => {
+      showToast('Could not play audio preview.');
+      setMainPlaying(false);
+    });
+  };
+
   const handleShare = async () => {
-    const text = `Check out my PhotoSound song "${songData?.title}" — AI-generated from a photo!`;
+    const text = `Check out my PhotoSound song "${songData?.title}" â AI-generated from a photo!`;
     try {
       if (navigator.share) {
         await navigator.share({ title: songData?.title, text, url: window.location.origin });
@@ -191,9 +228,9 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>PhotoSound — Turn any photo into a song</title>
+        <title>PhotoSound â Turn any photo into a song</title>
         <meta name="description" content="Upload any photo. AI analyses its vibe and generates a unique original song that matches it. Free 30-second preview, $1.99 for the full download." />
-        <meta property="og:title" content="PhotoSound — Turn any photo into a song" />
+        <meta property="og:title" content="PhotoSound â Turn any photo into a song" />
         <meta property="og:description" content="Every photo has a sound. Upload yours and hear it." />
         <meta property="og:image" content="/og-image.svg" />
         <meta name="twitter:card" content="summary_large_image" />
@@ -219,13 +256,13 @@ export default function Home() {
           role="alert"
           aria-live="polite"
         >
-          {toast.type === 'error' ? (
+           {toast.type === 'error' ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <svg className="w5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
           )}
           {toast.msg}
-          <button onClick={() => setToast(null)} className="ml-2 opacity-50 hover:opacity-100">✕</button>
+          <button onClick={() => setToast(null)} className="ml-2 opacity-50 hover:opacity-100">â</button>
         </div>
       )}
 
@@ -377,7 +414,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* Idle — Upload */}
+            {/* Idle â Upload */}
             {step === 'idle' && (
               <div
                 onDrop={handleDrop}
@@ -428,7 +465,7 @@ export default function Home() {
                     <div><dt className="text-white/40 inline">Instruments:</dt> <dd className="text-white/80 inline ml-1">{analysis.instruments?.slice(0, 2).join(', ')}</dd></div>
                   </dl>
                 </div>
-                <p className="text-white/30 text-xs mt-4">This takes 1–3 minutes&hellip;</p>
+                <p className="text-white/30 text-xs mt-4">This takes 1â3 minutes&hellip;</p>
               </div>
             )}
 
@@ -444,7 +481,7 @@ export default function Home() {
                       ) : (
                         <div className="flex gap-0.5 items-end pb-1">
                           {[3, 5, 4, 6, 3, 5, 4].map((h, i) => (
-                            <div key={i} className="waveform-bar w-1 rounded-sm bg-[#b84ef1]" style={{ height: `${h * 3}px`, animationDelay: `${i * 0.1}s` }} />
+                            <div key={i} className={`w-1 rounded-sm bg-[#b84ef1] ${mainPlaying ? 'waveform-bar' : ''}`} style={{ height: `${h * 3}px`, animationDelay: `${i * 0.1}s` }} />
                           ))}
                         </div>
                       )}
@@ -456,27 +493,35 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Fake waveform */}
+                  {/* Waveform progress */}
                   <div className="mb-3 h-8 flex items-center gap-px">
                     {Array.from({ length: 60 }).map((_, i) => {
                       const heights = [4, 6, 8, 5, 9, 7, 10, 6, 8, 5, 7, 9, 6, 10, 8, 5, 7, 6, 9, 8, 5, 7, 10, 6, 8, 7, 5, 9, 6, 8, 10, 7, 5, 8, 6, 9, 7, 10, 5, 8, 6, 7, 9, 5, 8, 10, 6, 7, 8, 5, 9, 6, 8, 7, 10, 5, 8, 6, 9, 7];
                       const h = heights[i] || 6;
-                      return <div key={i} className="flex-1 rounded-full bg-[#b84ef1]/40" style={{ height: `${h * 2.5}px` }} />;
+                      const previewSec = songData.previewSeconds || 30;
+                      const filled = mainTime / previewSec > i / 60;
+                      return <div key={i} className="flex-1 rounded-full transition-colors" style={{ height: `${h * 2.5}px`, backgroundColor: filled ? 'rgb(184,78,241)' : 'rgba(184,78,241,0.25)' }} />;
                     })}
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={scrollTo}
+                      onClick={handleMainPlay}
                       className="w-10 h-10 rounded-full bg-[#b84ef1] hover:bg-[#b84ef1]/80 flex items-center justify-center transition-colors"
-                      aria-label="Play preview"
+                      aria-label={mainPlaying ? 'Pause preview' : 'Play preview'}
                     >
-                      <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>
+                      {mainPlaying ? (
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>
+                      )}
                     </button>
-                    <div className="text-xs text-white/40 font-mono">0:00 / 0:30</div>
+                    <div className="text-xs text-white/40 font-mono">
+                      {String(Math.floor(mainTime / 60)).padStart(1, '0')}:{String(mainTime % 60).padStart(2, '0')} / 0:{String(songData.previewSeconds || 30).padStart(2, '0')}
+                    </div>
                     <div className="ml-auto text-xs text-white/40 flex items-center gap-1">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                      0:30 preview
+                      {songData.previewSeconds || 30}s preview
                     </div>
                   </div>
                 </div>
@@ -542,7 +587,7 @@ export default function Home() {
                 <ul className="space-y-2 text-sm text-white/60" role="list">
                   {['Unlimited uploads', 'AI photo analysis', '30-second song preview', { text: 'Full song download', disabled: true }].map((item, i) => (
                     <li key={i} className={`flex gap-2 ${item.disabled ? 'text-white/30' : ''}`}>
-                      <span className={item.disabled ? 'text-white/30' : 'text-green-400'}>{item.disabled ? '✗' : '✓'}</span>
+                      <span className={item.disabled ? 'text-white/30' : 'text-green-400'}>{item.disabled ? 'â' : 'â'}</span>
                       {typeof item === 'string' ? item : item.text}
                     </li>
                   ))}
@@ -553,8 +598,8 @@ export default function Home() {
                 <div className="text-lg font-bold mb-1">Full Download</div>
                 <div className="text-3xl font-black mb-4">$1.99</div>
                 <ul className="space-y-2 text-sm text-white/60" role="list">
-                  {['Full-length MP3 (2–3 min)', 'Commercial use rights', 'Instant download', 'Unique — never repeated'].map((item, i) => (
-                    <li key={i} className="flex gap-2"><span className="text-green-400">✓</span>{item}</li>
+                  {['Full-length MP3 (2â3 min)', 'Commercial use rights', 'Instant download', 'Unique â never repeated'].map((item, i) => (
+                    <li key={i} className="flex gap-2"><span className="text-green-400">â</span>{item}</li>
                   ))}
                 </ul>
                 <button onClick={scrollTo} className="btn-primary w-full mt-6 py-3 text-sm">Create your song</button>
