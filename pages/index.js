@@ -7,19 +7,19 @@ import PricingCard from '../components/PricingCard';
 import { useRouter } from 'next/router';
 
 const STEPS = [
-  { icon: ImageIcon, label: 'Upload any photo', desc: 'Selfie, sunset, your dog — anything works' },
+  { icon: ImageIcon, label: 'Upload any photo', desc: 'Selfie, sunset, your dog â anything works' },
   { icon: Zap, label: 'AI reads the vibe', desc: 'GPT-4 Vision extracts mood, colours, emotion' },
   { icon: Music, label: 'Suno writes the song', desc: 'A full AI song generated just for your image' },
-  { icon: Share2, label: 'Share with everyone', desc: '"This is what my photo sounds like 🎵"' },
+  { icon: Share2, label: 'Share with everyone', desc: '"This is what my photo sounds like ðµ"' },
 ];
 
 const EXAMPLES = [
-  { emoji: '🌅', label: 'Golden hour sunset', genre: 'Dreamy ambient', colour: '#f97316' },
-  { emoji: '🏙️', label: 'NYC at night', genre: 'Lo-fi hip hop', colour: '#818cf8' },
-  { emoji: '🌊', label: 'Ocean waves', genre: 'Chill electronic', colour: '#38bdf8' },
-  { emoji: '🐕', label: 'Puppy portrait', genre: 'Playful indie pop', colour: '#4ade80' },
-  { emoji: '🌲', label: 'Forest trail', genre: 'Folk acoustic', colour: '#84cc16' },
-  { emoji: '💃', label: 'Dance night out', genre: 'Vibrant house', colour: '#f472b6' },
+  { emoji: 'ð', label: 'Golden hour sunset', genre: 'Dreamy ambient', colour: '#f97316' },
+  { emoji: 'ðï¸', label: 'NYC at night', genre: 'Lo-fi hip hop', colour: '#818cf8' },
+  { emoji: 'ð', label: 'Ocean waves', genre: 'Chill electronic', colour: '#38bdf8' },
+  { emoji: 'ð', label: 'Puppy portrait', genre: 'Playful indie pop', colour: '#4ade80' },
+  { emoji: 'ð²', label: 'Forest trail', genre: 'Folk acoustic', colour: '#84cc16' },
+  { emoji: 'ð', label: 'Dance night out', genre: 'Vibrant house', colour: '#f472b6' },
 ];
 
 export default function Home() {
@@ -33,9 +33,9 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>PhotoSound — Turn any photo into a song</title>
+        <title>PhotoSound â Turn any photo into a song</title>
         <meta name="description" content="Upload any photo and get an AI-generated song that matches its vibe. Powered by Suno AI." />
-        <meta property="og:title" content="PhotoSound — Turn any photo into a song" />
+        <meta property="og:title" content="PhotoSound â Turn any photo into a song" />
         <meta property="og:description" content="What does your favourite photo sound like?" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
@@ -53,7 +53,7 @@ export default function Home() {
               <span className="font-black text-lg tracking-tight">PhotoSound</span>
             </div>
             <button onClick={scrollToApp} className="btn-primary text-sm py-2 px-5">
-              Try it free →
+              Try it free â
             </button>
           </div>
         </nav>
@@ -62,7 +62,7 @@ export default function Home() {
         <section className="max-w-4xl mx-auto px-5 pt-20 pb-16 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass mb-8 text-sm text-brand-300 font-medium border border-brand-500/20">
             <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-            AI-powered · Instant generation
+            AI-powered Â· Instant generation
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] tracking-tight mb-6">
@@ -74,7 +74,7 @@ export default function Home() {
           </h1>
 
           <p className="text-xl text-white/55 max-w-xl mx-auto leading-relaxed mb-10">
-            Upload any image. AI analyses its vibe, mood, and emotion — then generates a
+            Upload any image. AI analyses its vibe, mood, and emotion â then generates a
             full original song that matches it. Every photo has a sound.
           </p>
 
@@ -83,7 +83,7 @@ export default function Home() {
             <ChevronRight size={18} />
           </button>
 
-          <p className="mt-4 text-white/30 text-sm">Free preview · $1.99 for full download</p>
+          <p className="mt-4 text-white/30 text-sm">Free preview Â· $1.99 for full download</p>
 
           {/* Floating example genres */}
           <div className="flex flex-wrap justify-center gap-3 mt-12">
@@ -147,9 +147,9 @@ export default function Home() {
             {[...Array(5)].map((_, i) => <Star key={i} size={18} className="fill-brand-400 text-brand-400" />)}
           </div>
           <p className="text-white/60 max-w-md mx-auto italic text-lg leading-relaxed">
-            "Uploaded my sunset photo — got the most vibe-accurate lo-fi track. Sent it to all my friends instantly."
+            "Uploaded my sunset photo â got the most vibe-accurate lo-fi track. Sent it to all my friends instantly."
           </p>
-          <p className="text-white/30 text-sm mt-3 font-medium">— Early tester</p>
+          <p className="text-white/30 text-sm mt-3 font-medium">â Early tester</p>
         </section>
 
         {/* Footer */}
@@ -159,7 +159,7 @@ export default function Home() {
               <Music size={16} className="text-brand-500" />
               <span className="text-white/40 text-sm font-semibold">PhotoSound</span>
             </div>
-            <p className="text-white/25 text-xs">© 2026 PhotoSound. Built with Suno AI & OpenAI.</p>
+            <p className="text-white/25 text-xs">Â© 2026 PhotoSound. Built with Suno AI & OpenAI.</p>
             <div className="flex gap-5 text-white/35 text-xs">
               <a href="#" className="hover:text-white/60 transition-colors">Privacy</a>
               <a href="#" className="hover:text-white/60 transition-colors">Terms</a>
@@ -190,7 +190,7 @@ function GenerateWidget() {
       const fd = new FormData();
       fd.append('image', file);
       const analyzeRes = await fetch('/api/analyze', { method: 'POST', body: fd });
-      if (!analyzeRes.ok) throw new Error(.(await analyzeRes.json()).error);
+      if (!analyzeRes.ok) throw new Error((await analyzeRes.json()).error);
       const analysisData = await analyzeRes.json();
       setAnalysis(analysisData);
 
@@ -256,7 +256,7 @@ function GenerateWidget() {
           onClick={() => { setStatus('idle'); setResult(null); setFile(null); setAnalysis(null); }}
           className="w-full py-2.5 rounded-xl text-sm text-white/50 hover:text-white/70 hover:bg-white/[0.04] transition-all"
         >
-          ↚ Try another photo
+          â Try another photo
         </button>
       </div>
     );
@@ -267,14 +267,14 @@ function GenerateWidget() {
       <PhotoUpload onFileSelect={setFile} disabled={status === 'analyzing' || status === 'generating'} />
 
       {status === 'analyzing' && (
-        <StatusBanner icon="🔍" label="Analysing your photo…" sub="GPT-4 Vision is reading the vibe" />
+        <StatusBanner icon="ð" label="Analysing your photoâ¦" sub="GPT-4 Vision is reading the vibe" />
       )}
       {status === 'generating' && (
-        <StatusBanner icon="🎵" label="Composing your song…" sub="Suno AI is generating — takes ~45s" spinner />
+        <StatusBanner icon="ðµ" label="Composing your songâ¦" sub="Suno AI is generating â takes ~45s" spinner />
       )}
       {status === 'error' && (
         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          ⚠️ {errorMsg}
+          â ï¸ {errorMsg}
         </div>
       )}
 
