@@ -232,7 +232,7 @@ export default function Home() {
         <meta name="description" content="Upload any photo. AI analyses its vibe and generates a unique original song that matches it. Free 30-second preview, $1.99 for the full download." />
         <meta property="og:title" content="PhotoSound â Turn any photo into a song" />
         <meta property="og:description" content="Every photo has a sound. Upload yours and hear it." />
-        <meta property="og:image" content="/og-image.svg" />
+        <meta property="og:image" content="https://photosound.vercel.app/og-image.svg" />
         <meta name="twitter:card" content="summary_large_image" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
