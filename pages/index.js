@@ -32,6 +32,9 @@ export default function Home() {
   const [toast, setToast] = useState(null);
   const [mainPlaying, setMainPlaying] = useState(false);
   const [mainTime, setMainTime] = useState(0);
+  const [previewOver, setPreviewOver] = useState(false);
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadSent, setLeadSent] = useState(false);
   const widgetRef = useRef(null);
   const fileInputRef = useRef(null);
   const audioRefs = useRef({});
@@ -132,6 +135,9 @@ export default function Home() {
       mainAudioRef.current = null;
       setMainPlaying(false);
       setMainTime(0);
+    setPreviewOver(false);
+    setLeadEmail('');
+    setLeadSent(false);
     }
     setStep('idle');
     setFile(null);
@@ -156,6 +162,7 @@ export default function Home() {
           audio.pause();
           audio.currentTime = 0;
           setMainPlaying(false);
+          setPreviewOver(true);
           setMainTime(0);
         }
       });
@@ -168,7 +175,23 @@ export default function Home() {
     });
   };
 
-  const handleShare = async () => {
+    const handleLeadSubmit = async () => {
+    if (!leadEmail || !leadEmail.includes('@')) return;
+    try {
+      await fetch('/api/save-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: leadEmail,
+          songTitle: songData?.title,
+          genre: analysis?.genre,
+        }),
+      });
+    } catch {}
+    setLeadSent(true);
+  };
+
+const handleShare = async () => {
     const text = `Check out my PhotoSound song "${songData?.title}" â AI-generated from a photo!`;
     try {
       if (navigator.share) {
@@ -548,6 +571,31 @@ export default function Home() {
                   </button>
                 </div>
 
+                {previewOver && !leadSent && (
+                <div className="glass rounded-2xl p-5 border border-brand/30 text-center">
+                  <div className="text-2xl mb-2">🎵</div>
+                  <p className="font-semibold text-sm mb-1">Liked what you heard?</p>
+                  <p className="text-white/50 text-xs mb-4">Drop your email and we&apos;ll send a link to buy the full song later.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={leadEmail}
+                      onChange={e => setLeadEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleLeadSubmit()}
+                      placeholder="your@email.com"
+                      className="flex-1 bg-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 border border-white/10 focus:outline-none focus:border-brand/50"
+                    />
+                    <button onClick={handleLeadSubmit} className="btn-primary px-4 py-2.5 text-sm whitespace-nowrap">
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
+              {previewOver && leadSent && (
+                <div className="glass rounded-2xl p-4 text-center border border-green-500/20">
+                  <span className="text-green-400 text-sm">&#10003; Saved! Check your inbox for the buy link.</span>
+                </div>
+              )}
                 <button onClick={handleReset} className="w-full py-2 text-sm text-white/40 hover:text-white/60 transition-colors">
                   Try another photo
                 </button>
